@@ -14,7 +14,7 @@ Containerlab' embedded config engine is based on a well known templating functio
 
 At the very high level, the following two pieces make the core of the config engine:
 
-* **templates** - text files written in [Go template syntax](https://learn.hashicorp.com/tutorials/nomad/go-template-syntax​) which contain CLI snippets
+* **templates** - text files written in [Go template syntax](https://learn.hashicorp.com/tutorials/nomad/go-template-syntax) which contain CLI snippets
 * **variables** - user-defined variables that are provided in the topology file to parametrize the snippets used in templates.
 
 ## 3 Variables
