@@ -1,0 +1,40 @@
+name: srlbgp
+
+topology:
+  nodes:
+    srl1:
+      kind: srl
+      image: ghcr.io/nokia/srlinux
+      config:
+        vars:
+          system_ip: 10.0.0.1/32
+          bgp:
+            as: 65100
+            groups:
+              ebgp:
+                peer_as: 65200
+            neighbors:
+              192.168.0.2:
+                peer_group: ebgp
+
+    srl2:
+      kind: srl
+      image: ghcr.io/nokia/srlinux
+      config:
+        vars:
+          system_ip: 10.0.0.2/32
+          bgp:
+            as: 65200
+            groups:
+              ebgp:
+                peer_as: 65100
+                cluster_id: 1.2.3.4
+            neighbors:
+              192.168.0.1:
+                peer_group: ebgp
+
+  links:
+    - endpoints: ["srl1:e1-1", "srl2:e1-1"]
+      vars:
+        port: [ethernet-1/1, ethernet-1/1]
+        clab_link_ip: 192.168.0.1/30

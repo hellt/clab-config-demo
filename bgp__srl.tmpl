@@ -1,0 +1,70 @@
+{{/* this block performs basic validation of the user provided variables */}}
+{{/* it checks that the port names follow the srlinux convention */}}
+{{/* and ensures that the IP provided for links are valid IP addresses */}}
+
+{{ range .clab_links }}
+    {{ expect .port "^(ethernet-\\d+/|e\\d+-)\\d+$" }}
+    {{ expect .clab_link_ip "ip" }}
+{{ end }}
+
+{{/* configuring system0 interface using the variable `system_ip` the users set for each node */}}
+/ interface system0 admin-state enable subinterface 0 ipv4 address {{ .system_ip }}
+
+{{/* adding system0 inteface to the default network instance */}}
+/ network-instance default {
+    interface system0.0 {
+    }
+}
+
+{{/* now we configure data interfaces and their IPs using the auto-generated IPs 
+     based on `clab_link_ip var set on each endpoint`
+
+     start the loop over the auto-created `clab_link` variable
+     where we have more variable available for creation of interfaces
+*/}}
+
+{{ range .clab_links }}
+/ interface {{ .port }} {
+    admin-state enable
+    subinterface 0 {
+        ipv4 address {{ .clab_link_ip }}
+    }
+}
+
+{{/* add the created interface to the default netw instance */}}
+/ network-instance default {
+    interface {{ .port }}.0 {
+    }
+}
+{{ end }}
+
+{{/* configuring the policy first */}}
+/ routing-policy
+/ routing-policy policy all
+/ routing-policy policy all default-action
+/ routing-policy policy all default-action accept
+
+{{/*=======================
+              BGP
+    =======================
+*/}}
+/ network-instance default protocols bgp router-id {{ ip .system_ip }}
+/ network-instance default protocols bgp autonomous-system {{ .bgp.as }}
+/ network-instance default protocols bgp ipv4-unicast admin-state enable
+
+{{/* visit all the groups defined per node and capture the group name and its contents */}}
+{{ range $name, $group := .bgp.groups }}
+    / network-instance default protocols bgp group {{ $name }} peer-as {{ $group.peer_as }}
+    / network-instance default protocols bgp group {{ $name }} import-policy all export-policy all
+
+{{/* check if cluster_id was defined in a group */}}
+    {{ if $group.cluster_id }}
+        / network-instance default protocols bgp group {{ $name }} route-reflector client false
+        / network-instance default protocols bgp group {{ $name }} route-reflector cluster-id {{ $group.cluster_id }}
+    {{ end }}
+{{ end }}
+
+{{/* visit all the neighbors defined per node and capture the nei IP and its contents */}}
+{{ range $ip, $nei := .bgp.neighbors }}
+/ network-instance default protocols bgp neighbor {{ $ip }} peer-group {{ $nei.peer_group }}
+{{ end }}
